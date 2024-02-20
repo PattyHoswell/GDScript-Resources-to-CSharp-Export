@@ -1,0 +1,39 @@
+[gd_scene load_steps=9 format=3 uid="uid://bwdru6y2tpmq2"]
+
+[ext_resource type="Script" path="res://Test.cs" id="1_xx64n"]
+[ext_resource type="Script" path="res://TestCSharpResources.cs" id="2_5d8mk"]
+[ext_resource type="Script" path="res://TestGDScriptResources.gd" id="2_8o0fg"]
+
+[sub_resource type="PackedScene" id="PackedScene_yuh2o"]
+
+[sub_resource type="Resource" id="Resource_74xrj"]
+script = ExtResource("2_5d8mk")
+myVector = Vector2(45325, 4)
+myNumber = 0.12
+text = "sdf"
+scene = SubResource("PackedScene_yuh2o")
+arrayNumbers = null
+
+[sub_resource type="PackedScene" id="PackedScene_c6rwr"]
+
+[sub_resource type="Resource" id="Resource_5ewem"]
+script = ExtResource("2_8o0fg")
+myVector = Vector2(3, 6)
+myNumber = 5.047
+text = "dsfdsf"
+scene = SubResource("PackedScene_c6rwr")
+arrayNumbers = Array[int]([])
+
+[sub_resource type="LabelSettings" id="LabelSettings_7tsd6"]
+font_size = 50
+
+[node name="Node" type="Node"]
+script = ExtResource("1_xx64n")
+CSharpResources = SubResource("Resource_74xrj")
+GDScriptResources = SubResource("Resource_5ewem")
+
+[node name="Label" type="Label" parent="."]
+offset_right = 880.0
+offset_bottom = 338.0
+label_settings = SubResource("LabelSettings_7tsd6")
+autowrap_mode = 2
