@@ -12,17 +12,17 @@ myVector = Vector2(45325, 4)
 myNumber = 0.12
 text = "sdf"
 scene = SubResource("PackedScene_yuh2o")
-arrayNumbers = null
+arrayNumbers = [4, 2, -1]
 
-[sub_resource type="PackedScene" id="PackedScene_c6rwr"]
+[sub_resource type="PackedScene" id="PackedScene_lwbvc"]
 
-[sub_resource type="Resource" id="Resource_5ewem"]
+[sub_resource type="Resource" id="Resource_4et66"]
 script = ExtResource("2_8o0fg")
 myVector = Vector2(3, 6)
-myNumber = 5.047
-text = "dsfdsf"
-scene = SubResource("PackedScene_c6rwr")
-arrayNumbers = Array[int]([])
+myNumber = 2.15
+text = "gfdgh"
+scene = SubResource("PackedScene_lwbvc")
+arrayNumbers = Array[int]([1, -3, 4])
 
 [sub_resource type="LabelSettings" id="LabelSettings_7tsd6"]
 font_size = 50
@@ -30,7 +30,7 @@ font_size = 50
 [node name="Node" type="Node"]
 script = ExtResource("1_xx64n")
 CSharpResources = SubResource("Resource_74xrj")
-GDScriptResources = SubResource("Resource_5ewem")
+GDScriptResources = SubResource("Resource_4et66")
 
 [node name="Label" type="Label" parent="."]
 offset_right = 880.0

@@ -11,17 +11,23 @@ using System.Reflection;
 [Tool]
 public partial class ResourcesTypeExportWrapper : Node
 {
-    private System.Collections.Generic.Dictionary<string, string> PropertyFieldHintString = new();
+    /// <summary>
+    /// Make our keys to be <see cref="StringName"/> instead so we don't have to keep implicitly converting to <see cref="string"/> for comparing our key
+    /// </summary>
+    private Dictionary<StringName, string> PropertyFieldHintString = new();
 
     /// <summary>
     /// Get all the <see cref="GlobalClassAttribute"/> on the current project including the one from GDScript
     /// 
-    /// <para>Make sure the class you referring to have <see cref="ToolAttribute"/> (@tool if GDScript) and <see cref="GlobalClassAttribute"/></para>
+    /// <para>Make sure the class you referring to have <see cref="ToolAttribute"/> (@tool if GDScript) and <see cref="GlobalClassAttribute"/> (class_name if GDScript)</para>
     /// 
     /// <para>Then add it to our <see cref="PropertyFieldHintString"/> with underscores at the start to create a copy of the property that we will use to point to the correct type</para>
     /// </summary>
     private void InitAllProperty()
     {
+        //Since this method will be called often, clear our cache in case we mistakenly cached a property/field that has been renamed or no longer exists
+        PropertyFieldHintString.Clear();
+
         var globalClassList = ProjectSettings.Singleton.GetGlobalClassList().Select(x => x["class"].AsString());
 
         foreach (var field in GetType().GetFields(BindingFlags.DeclaredOnly | BindingFlags.GetField | BindingFlags.Instance |
@@ -35,7 +41,7 @@ public partial class ResourcesTypeExportWrapper : Node
 
                 else
                     GD.PrintErr("Cannot find global class named ", exportAttribute.HintString,
-                                " make sure the class you referring to have @tool [[Tool] if CSharp] and have assigned class_name ([GlobalClass] if CSharp)");
+                                " make sure the class you referring to have @tool ([Tool] if CSharp]) and have assigned class_name ([GlobalClass] if CSharp)");
             }
         }
 
@@ -50,7 +56,7 @@ public partial class ResourcesTypeExportWrapper : Node
 
                 else
                     GD.PrintErr("Cannot find global class named ", exportAttribute.HintString,
-                                " make sure the class you referring to have @tool [[Tool] if CSharp] and have assigned class_name ([GlobalClass] if CSharp)");
+                                " make sure the class you referring to have @tool ([Tool] if CSharp]) and have assigned class_name ([GlobalClass] if CSharp)");
 
             }
         }
@@ -103,7 +109,13 @@ public partial class ResourcesTypeExportWrapper : Node
     public override void _ValidateProperty(Dictionary property)
     {
         var name = property["name"].AsString();
-        if (!name.StartsWith("_") && PropertyFieldHintString.ContainsKey($"_{name}"))
+
+        //No longer assumes that the original field doesn't start with _
+        //if (!name.StartsWith("_") && PropertyFieldHintString.ContainsKey($"_{name}"))
+
+        if (PropertyFieldHintString.ContainsKey($"_{name}"))
+
+            //Hide the original property as we already created a "fake" property that points to the correct type
             property["usage"] = (int)PropertyUsageFlags.NoEditor;
 
     }
