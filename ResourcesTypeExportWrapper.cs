@@ -2,6 +2,7 @@ using Godot;
 using Godot.Collections;
 using System.Linq;
 using System.Reflection;
+using System.Text;
 
 /// <summary>
 /// <see cref="ToolAttribute"/> is required to show our custom resources from GDScript (or CSharp)
@@ -14,7 +15,7 @@ public partial class ResourcesTypeExportWrapper : Node
     /// <summary>
     /// Make our keys to be <see cref="StringName"/> instead so we don't have to keep implicitly converting to <see cref="string"/> for comparing our key
     /// </summary>
-    private Dictionary<StringName, string> PropertyFieldHintString = new();
+    private System.Collections.Generic.Dictionary<StringName, (string hintString, PropertyHint hintType, Variant.Type propertyType)> PropertyFieldHintString = new();
 
     /// <summary>
     /// Get all the <see cref="GlobalClassAttribute"/> on the current project including the one from GDScript
@@ -27,9 +28,7 @@ public partial class ResourcesTypeExportWrapper : Node
     {
         //Since this method will be called often, clear our cache in case we mistakenly cached a property/field that has been renamed or no longer exists
         PropertyFieldHintString.Clear();
-
         var globalClassList = ProjectSettings.Singleton.GetGlobalClassList().Select(x => x["class"].AsString());
-
         foreach (var field in GetType().GetFields(BindingFlags.DeclaredOnly | BindingFlags.GetField | BindingFlags.Instance |
                                                   BindingFlags.Public | BindingFlags.NonPublic))
         {
@@ -37,11 +36,45 @@ public partial class ResourcesTypeExportWrapper : Node
             if (exportAttribute != null && exportAttribute.Hint == PropertyHint.ResourceType)
             {
                 if (globalClassList.Any(x => x == exportAttribute.HintString))
-                    PropertyFieldHintString[$"_{field.Name}"] = exportAttribute.HintString;
+                {
+                    var hintStringBuilder = new StringBuilder();
+                    var propertyHint = PropertyHint.ResourceType;
+                    var nestedType = field.FieldType;
+                    var propertyType = Variant.Type.Object;
 
+                    if (GD.TypeToVariantType(nestedType) == Variant.Type.Array)
+                    {
+                        propertyHint = PropertyHint.ArrayType;
+                        propertyType = Variant.Type.Array;
+
+                        while (nestedType != null && GD.TypeToVariantType(nestedType) == Variant.Type.Array)
+                        {
+                            //Doesn't add the first item because otherwise 1d array will become 2d, 2d becomes 3d and so on..
+                            if (nestedType != field.FieldType)
+                                hintStringBuilder.Append($"{Variant.Type.Array:D}:");
+
+                            nestedType = nestedType.GenericTypeArguments.Length > 0 ? nestedType.GenericTypeArguments[0] : null;
+                        }
+
+                        hintStringBuilder.Append($"{Variant.Type.Object:D}/{PropertyHint.ResourceType:D}:{exportAttribute.HintString}");
+                    }
+
+                    else if (GD.TypeToVariantType(nestedType) == Variant.Type.Dictionary)
+                    {
+                        GD.PrintErr("At the time of writing this, Dictionary is not supported, even if this script created a property that points to the correct type, it is ignored by godot.");
+                        continue;
+                    }
+
+                    else
+                    {
+                        hintStringBuilder.Append(exportAttribute.HintString);
+                    }
+                    PropertyFieldHintString[$"_{field.Name}"] = (hintStringBuilder.ToString(), propertyHint, propertyType);
+                }
+                
                 else
                     GD.PrintErr("Cannot find global class named ", exportAttribute.HintString,
-                                " make sure the class you referring to have @tool ([Tool] if CSharp]) and have assigned class_name ([GlobalClass] if CSharp)");
+                                " make sure the class you referring to have @tool ([Tool] if CSharp) and have assigned class_name ([GlobalClass] if CSharp)");
             }
         }
 
@@ -52,11 +85,46 @@ public partial class ResourcesTypeExportWrapper : Node
             if (exportAttribute != null && exportAttribute.Hint == PropertyHint.ResourceType)
             {
                 if (globalClassList.Any(x => x == exportAttribute.HintString))
-                    PropertyFieldHintString[$"_{property.Name}"] = exportAttribute.HintString;
+                {
+
+                    var hintStringBuilder = new StringBuilder();
+                    var propertyHint = PropertyHint.ResourceType;
+                    var nestedType = property.PropertyType;
+                    var propertyType = Variant.Type.Object;
+
+                    if (GD.TypeToVariantType(nestedType) == Variant.Type.Array)
+                    {
+                        propertyHint = PropertyHint.ArrayType;
+                        propertyType = Variant.Type.Array;
+
+                        while (nestedType != null && GD.TypeToVariantType(nestedType) == Variant.Type.Array)
+                        {
+                            //Doesn't add the first item because otherwise 1d array will become 2d, 2d becomes 3d and so on..
+                            if (nestedType != property.PropertyType)
+                                hintStringBuilder.Append($"{Variant.Type.Array:D}:");
+
+                            nestedType = nestedType.GenericTypeArguments.Length > 0 ? nestedType.GenericTypeArguments[0] : null;
+                        }
+
+                        hintStringBuilder.Append($"{Variant.Type.Object:D}/{PropertyHint.ResourceType:D}:{exportAttribute.HintString}");
+                    }
+
+                    else if (GD.TypeToVariantType(nestedType) == Variant.Type.Dictionary)
+                    {
+                        GD.PrintErr("At the time of writing this, Dictionary is not supported, even if this script created a property that points to the correct type, it is ignored by godot.");
+                        continue;
+                    }
+
+                    else
+                    {
+                        hintStringBuilder.Append(exportAttribute.HintString);
+                    }
+                    PropertyFieldHintString[$"_{property.Name}"] = (hintStringBuilder.ToString(), propertyHint, propertyType);
+                }
 
                 else
                     GD.PrintErr("Cannot find global class named ", exportAttribute.HintString,
-                                " make sure the class you referring to have @tool ([Tool] if CSharp]) and have assigned class_name ([GlobalClass] if CSharp)");
+                                " make sure the class you referring to have @tool ([Tool] if CSharp) and have assigned class_name ([GlobalClass] if CSharp)");
 
             }
         }
@@ -69,7 +137,7 @@ public partial class ResourcesTypeExportWrapper : Node
         {
             var result = property.ToString();
             result = result.Substring(1, result.Length - 1);
-            return Get(result).As<Resource>() != null;
+            return Get(result).VariantType != Variant.Type.Nil;
         }
 
         return base._PropertyCanRevert(property);
@@ -81,7 +149,7 @@ public partial class ResourcesTypeExportWrapper : Node
         {
             var result = property.ToString();
             result = result.Substring(1, result.Length - 1);
-            Set(result, value.As<Resource>());
+            Set(result, value);
             return true;
         }
 
@@ -94,7 +162,7 @@ public partial class ResourcesTypeExportWrapper : Node
         {
             var result = property.ToString();
             result = result.Substring(1, result.Length - 1);
-            return Get(result).As<Resource>();
+            return Get(result);
         }
         return base._Get(property);
     }
@@ -119,6 +187,7 @@ public partial class ResourcesTypeExportWrapper : Node
             property["usage"] = (int)PropertyUsageFlags.NoEditor;
 
     }
+
     public override Array<Dictionary> _GetPropertyList()
     {
         //Get all property and field from the current type
@@ -131,10 +200,10 @@ public partial class ResourcesTypeExportWrapper : Node
             array.Add(new Dictionary
             {
                 { "name", item.Key},
-                { "type", (int)Variant.Type.Object },
+                { "type", (int)item.Value.propertyType },
                 { "usage", (int)PropertyUsageFlags.Editor | (int)PropertyUsageFlags.EditorInstantiateObject },
-                { "hint", (int)PropertyHint.ResourceType },
-                { "hint_string", item.Value }
+                { "hint", (int)item.Value.hintType },
+                { "hint_string", item.Value.hintString }
             });
         }
         return array;

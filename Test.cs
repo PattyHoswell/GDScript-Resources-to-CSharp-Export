@@ -1,5 +1,5 @@
 using Godot;
-
+using Godot.Collections;
 /// <summary>
 /// <see cref="ToolAttribute"/> is required to show our custom resources from GDScript (or CSharp)
 /// </summary>
@@ -16,6 +16,22 @@ public partial class Test : ResourcesTypeExportWrapper
 
     [Export(PropertyHint.ResourceType, "TestGDScriptResources")] 
     public Resource GDScriptResources;
+
+    //Supports array with no arguments, this will show as Array[TestGDScriptResources] in the editor
+    [Export(PropertyHint.ResourceType, "TestGDScriptResources")]
+    public Array GDScriptResourcesArray;
+
+    //Supports typed array
+    [Export(PropertyHint.ResourceType, "TestGDScriptResources")]
+    public Resource[] GDScriptResourcesTypedArray;
+
+    //Supports nested array, there is no limit to how much nesting you can do
+    [Export(PropertyHint.ResourceType, "TestGDScriptResources")]
+    public Array<Array<Resource>> GDScriptResourcesNestedTypedArray;
+
+    //You can even do this if you're crazy enough
+    //[Export(PropertyHint.ResourceType, "TestGDScriptResources")]
+    //public Array<Array<Array<Array<Array<Array<Array<Array<Array<Array<Array<Array<Array<Array<Array<Array<Array<Array<Array<Array<Array<Array<Array<Resource>>>>>>>>>>>>>>>>>>>>>>> GDScriptResourcesCrazyArray;
 
     // Called when the node enters the scene tree for the first time.
     public override void _Ready()
@@ -51,5 +67,49 @@ public partial class Test : ResourcesTypeExportWrapper
         }
         else
             GD.Print(nameof(GDScriptResources), " is null");
-	}
+
+
+        #region Array
+
+        if (GDScriptResourcesArray != null)
+            Recursion(GDScriptResourcesArray, "GDScript Resources Array");
+        else
+            GD.Print(nameof(GDScriptResourcesArray), " is null");
+
+        if (GDScriptResourcesTypedArray != null)
+            Recursion(Get(nameof(GDScriptResourcesTypedArray)).AsGodotArray(), "GDScript Resources Typed Array");
+        else
+            GD.Print(nameof(GDScriptResourcesTypedArray), " is null");
+
+        if (GDScriptResourcesNestedTypedArray != null)
+            Recursion(Get(nameof(GDScriptResourcesNestedTypedArray)).AsGodotArray(), "GDScript Resources Nested Typed Array");
+        else
+            GD.Print(nameof(GDScriptResourcesNestedTypedArray), " is null");
+
+        #endregion
+    }
+
+    void Recursion(Array parentArray, string name)
+    {
+        foreach (var item in parentArray)
+        {
+            var gdscriptResource = item.As<Resource>();
+            if (gdscriptResource != null)
+                PrintGDScriptResources(gdscriptResource, name);
+
+            else if (item.VariantType == Variant.Type.Array)
+                Recursion(item.AsGodotArray(), name);
+        }
+    }
+
+    void PrintGDScriptResources(Resource gdscriptResource, string name)
+    {
+        GD.Print("<--", name, "-->");
+        GD.Print(gdscriptResource.Get("myVector"));
+        GD.Print(gdscriptResource.Get("myNumber"));
+        GD.Print(gdscriptResource.Get("text"));
+        GD.Print(gdscriptResource.Get("scene"));
+        foreach (var number in gdscriptResource.Get("arrayNumbers").AsGodotArray())
+            GD.Print(number);
+    }
 }
